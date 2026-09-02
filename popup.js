@@ -191,6 +191,16 @@ function showStatus(message, type) {
   document.getElementById("submitBtn").disabled = type === "loading";
 }
 
+// Submission feedback (validation, in-flight, success/failure) shows under the submit
+// button instead of the header-area #status, which is reserved for hardware-detection
+// and internet-speed progress the user sees before they ever reach the button.
+function showSubmitStatus(message, type) {
+  const statusEl = document.getElementById("submitStatus");
+  statusEl.textContent = message;
+  statusEl.className = `status-message status-${type}`;
+  document.getElementById("submitBtn").disabled = type === "loading";
+}
+
 document.getElementById("hardwareForm").addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -199,11 +209,11 @@ document.getElementById("hardwareForm").addEventListener("submit", async (event)
   const apiKey = urlApiKey || document.getElementById("apiKey").value;
 
   if (!name || !email || !apiKey) {
-    showStatus("Please fill in all required fields", "error");
+    showSubmitStatus("Please fill in all required fields", "error");
     return;
   }
 
-  showStatus("Submitting...", "loading");
+  showSubmitStatus("Submitting...", "loading");
 
   try {
     // Calls the same submit_hardware_check_direct RPC function
@@ -237,11 +247,11 @@ document.getElementById("hardwareForm").addEventListener("submit", async (event)
     const body = await response.text();
 
     if (response.ok) {
-      showStatus(`✓ Submitted: ${body.replace(/"/g, "")}. Check your dashboard.`, "success");
+      showSubmitStatus(`✓ Submitted: ${body.replace(/"/g, "")}. Check your dashboard.`, "success");
     } else {
-      showStatus(`Submission failed: ${body}`, "error");
+      showSubmitStatus(`Submission failed: ${body}`, "error");
     }
   } catch (error) {
-    showStatus(`Error: ${error.message}`, "error");
+    showSubmitStatus(`Error: ${error.message}`, "error");
   }
 });
