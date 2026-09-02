@@ -7,6 +7,7 @@ const SUPABASE_ANON_KEY =
 
 let urlApiKey = null;
 let internetSpeed = { down: null, up: null };
+let storageDrives = [];
 
 // JS port of tcp-hardware-check-exe/Services/SpeedTestService.cs's GetTargetUrlsAsync:
 // scrape a token out of fast.com's own JS bundle, then ask its (undocumented) speedtest
@@ -98,8 +99,10 @@ async function detectHardware() {
       // characters (renders as tofu boxes), not a usable drive letter or name.
       const drivesEl = document.getElementById("storageDrives");
       drivesEl.innerHTML = "";
-      fixedDrives.forEach((drive, index) => {
-        const gb = Math.round(drive.capacity / (1024 * 1024 * 1024));
+      storageDrives = fixedDrives.map((drive) =>
+        Math.round(drive.capacity / (1024 * 1024 * 1024)),
+      );
+      storageDrives.forEach((gb, index) => {
         const row = document.createElement("div");
         row.className = "storage-drive-row";
         row.textContent = `Drive ${index + 1}: ${gb} GB`;
@@ -236,6 +239,7 @@ document.getElementById("hardwareForm").addEventListener("submit", async (event)
         p_ram_gb: parseInt(document.getElementById("ramGb").value, 10) || 0,
         p_storage_gb: parseInt(document.getElementById("storageGb").value, 10) || 0,
         p_storage_type: "Unknown (not detectable via browser)",
+        p_storage_drives: storageDrives,
         p_screen_resolution: document.getElementById("screenResolution").value,
         p_internet_speed_down: internetSpeed.down,
         p_internet_speed_up: internetSpeed.up,
@@ -247,7 +251,7 @@ document.getElementById("hardwareForm").addEventListener("submit", async (event)
     const body = await response.text();
 
     if (response.ok) {
-      showSubmitStatus(`✓ Submitted: ${body.replace(/"/g, "")}. Check your dashboard.`, "success");
+      showSubmitStatus(`Your hardware check is complete. The HR team will contact you with next steps.`, "success");
     } else {
       showSubmitStatus(`Submission failed: ${body}`, "error");
     }
