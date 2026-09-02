@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>TCP Hardware Checker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo-circle">
+          <img src="icons/icon-128.png" alt="TheCreditPros" class="logo" />
+        </div>
+
+        <h1>TCP Hardware Checker</h1>
+
+        <div class="menu-wrapper">
+          <button type="button" id="menuBtn" class="menu-btn" aria-label="More options">
+            &#8942;
+          </button>
+          <div id="menuDropdown" class="menu-dropdown" hidden>
+            <button type="button" id="rerunBtn" class="menu-item">Rerun Hardware Test</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="status" class="status-message"></div>
+
+      <form id="hardwareForm">
+        <div class="form-group">
+          <label for="name">Applicant Name *</label>
+          <input type="text" id="name" name="name" required placeholder="Your full name" />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address *</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            placeholder="your.email@company.com"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="apiKey">API Key *</label>
+          <input type="password" id="apiKey" name="apiKey" placeholder="(auto-filled from link)" />
+          <small>Leave blank if you opened this from your applicant link</small>
+        </div>
+
+        <fieldset disabled>
+          <legend>Detected Hardware (Auto-filled)</legend>
+
+          <div class="form-group">
+            <label>OS Version</label>
+            <input type="text" id="osVersion" readonly />
+          </div>
+
+          <div class="form-group">
+            <label>CPU Cores</label>
+            <input type="text" id="cpuCores" readonly />
+          </div>
+
+          <div class="form-group">
+            <label>CPU Model</label>
+            <input type="text" id="cpuModel" readonly />
+          </div>
+
+          <div class="form-group">
+            <label>RAM (GB)</label>
+            <input type="text" id="ramGb" readonly />
+          </div>
+
+          <div class="form-group">
+            <label>Total Storage (GB)</label>
+            <input type="text" id="storageGb" readonly />
+          </div>
+
+          <div class="form-group">
+            <label>Storage Drives</label>
+            <div id="storageDrives"></div>
+            <small>Chrome cannot detect SSD vs. HDD directly (no browser API for it) &mdash;
+              capacities are real, shown per drive.</small>
+          </div>
+
+          <div class="form-group">
+            <label>Screen Resolution</label>
+            <input type="text" id="screenResolution" readonly />
+          </div>
+
+          <div class="form-group">
+            <label>Webcam</label>
+            <input type="text" id="webcam" readonly />
+          </div>
+
+          <div class="form-group">
+            <label>Headset/Audio</label>
+            <input type="text" id="headset" readonly />
+          </div>
+
+          <div class="form-group">
+            <label>Internet Download</label>
+            <input type="text" id="internetDown" readonly />
+          </div>
+
+          <div class="form-group">
+            <label>Internet Upload</label>
+            <input type="text" id="internetUp" readonly />
+          </div>
+        </fieldset>
+
+        <button type="submit" id="submitBtn" class="btn-primary">Submit Hardware Check</button>
+      </form>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
