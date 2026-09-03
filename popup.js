@@ -207,6 +207,7 @@ async function detectHardware() {
 
   try {
     showStatus("Testing internet speed… do not close this window.", "loading");
+    startSubmitButtonLoadingText("Waiting for the Result. Do not close the extension.");
     await measureInternetSpeed();
     document.getElementById("internetDown").value = `${internetSpeed.down} Mbps`;
     document.getElementById("internetUp").value = `${internetSpeed.up} Mbps`;
@@ -218,7 +219,31 @@ async function detectHardware() {
     document.getElementById("internetDown").value = "Unavailable";
     document.getElementById("internetUp").value = "Unavailable";
     showStatus(`Couldn't measure internet speed (${error.message}) — you can still submit.`, "error");
+  } finally {
+    stopSubmitButtonLoadingText();
   }
+}
+
+// Swaps the submit button's own label for a "still working" message with animated dots
+// while it's disabled for the internet-speed test — a plain greyed-out "Submit Hardware
+// Check" looked identical to its normal idle state, easy to mistake for the extension
+// having frozen instead of still running the ~8s speed test.
+let submitButtonLoadingInterval = null;
+
+function startSubmitButtonLoadingText(baseText) {
+  const submitBtn = document.getElementById("submitBtn");
+  let dotCount = 0;
+  submitBtn.textContent = baseText;
+  submitButtonLoadingInterval = setInterval(() => {
+    dotCount = (dotCount + 1) % 4;
+    submitBtn.textContent = `${baseText}${".".repeat(dotCount)}`;
+  }, 400);
+}
+
+function stopSubmitButtonLoadingText() {
+  clearInterval(submitButtonLoadingInterval);
+  submitButtonLoadingInterval = null;
+  document.getElementById("submitBtn").textContent = "Submit Hardware Check";
 }
 
 // ~4s each direction against fast.com's real CDN target URLs, mirroring
