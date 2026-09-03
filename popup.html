@@ -110,7 +110,10 @@
           </div>
         </fieldset>
 
-        <button type="submit" id="submitBtn" class="btn-primary">Submit Hardware Check</button>
+        <button type="submit" id="submitBtn" class="btn-primary">
+          <span id="submitBtnSpinner" class="btn-spinner" hidden></span>
+          <span id="submitBtnText">Submit Hardware Check</span>
+        </button>
 
         <div id="submitStatus" class="status-message"></div>
       </form>
