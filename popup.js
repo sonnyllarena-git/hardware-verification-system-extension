@@ -120,7 +120,7 @@ async function renderDisplays() {
     const info = await chrome.system.display.getInfo();
     if (info && info.length > 0) displays = info;
   } catch (error) {
-    // system.display unavailable — fall back to window.screen below.
+    console.warn("chrome.system.display.getInfo() failed, falling back to window.screen:", error);
   }
 
   const detected = displays
