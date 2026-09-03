@@ -145,7 +145,7 @@ input:disabled {
   color: #666;
 }
 
-.storage-drive-row {
+.detected-item-row {
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;

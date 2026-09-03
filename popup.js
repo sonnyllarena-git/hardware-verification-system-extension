@@ -8,6 +8,7 @@ const SUPABASE_ANON_KEY =
 let urlApiKey = null;
 let internetSpeed = { down: null, up: null };
 let storageDrives = [];
+let screenResolution = "";
 
 // JS port of tcp-hardware-check-exe/Services/SpeedTestService.cs's GetTargetUrlsAsync:
 // scrape a token out of fast.com's own JS bundle, then ask its (undocumented) speedtest
@@ -111,20 +112,35 @@ async function getOSLabel(platformInfo) {
 // monitor is invisible to it. chrome.system.display is the privileged extension API that
 // actually enumerates every connected display (this extension already holds chrome.system.*
 // permissions) — falls back to window.screen if the permission/API is ever unavailable.
-async function getScreenResolutionSummary() {
+// Rendered as a list (like Storage Drives) rather than crammed into one text field, since
+// unlike storage there's no single "total" that multiple resolutions collapse into.
+async function renderDisplays() {
+  let displays = null;
   try {
-    const displays = await chrome.system.display.getInfo();
-    if (displays && displays.length > 0) {
-      return displays
+    const info = await chrome.system.display.getInfo();
+    if (info && info.length > 0) displays = info;
+  } catch (error) {
+    // system.display unavailable — fall back to window.screen below.
+  }
+
+  const detected = displays
+    ? displays
         .slice()
         .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
-        .map((d) => `${d.bounds.width}x${d.bounds.height}${d.isPrimary ? " (primary)" : ""}`)
-        .join(", ");
-    }
-  } catch (error) {
-    // system.display unavailable — fall back to the popup's own screen object below.
-  }
-  return `${window.screen.width}x${window.screen.height}`;
+        .map((d) => ({ resolution: `${d.bounds.width}x${d.bounds.height}`, isPrimary: d.isPrimary }))
+    : [{ resolution: `${window.screen.width}x${window.screen.height}`, isPrimary: true }];
+
+  screenResolution = detected.map((d) => d.resolution).join(", ");
+
+  const displaysEl = document.getElementById("screenDisplays");
+  displaysEl.innerHTML = "";
+  detected.forEach((d, index) => {
+    const row = document.createElement("div");
+    row.className = "detected-item-row";
+    const label = detected.length > 1 ? `Display ${index + 1}` : "Display";
+    row.textContent = `${label}: ${d.resolution}${d.isPrimary ? " (Primary)" : ""}`;
+    displaysEl.appendChild(row);
+  });
 }
 
 async function detectHardware() {
@@ -164,7 +180,7 @@ async function detectHardware() {
       );
       storageDrives.forEach((gb, index) => {
         const row = document.createElement("div");
-        row.className = "storage-drive-row";
+        row.className = "detected-item-row";
         row.textContent = `Drive ${index + 1}: ${gb} GB`;
         drivesEl.appendChild(row);
       });
@@ -173,7 +189,7 @@ async function detectHardware() {
     const platformInfo = await chrome.runtime.getPlatformInfo();
     document.getElementById("osVersion").value = await getOSLabel(platformInfo);
 
-    document.getElementById("screenResolution").value = await getScreenResolutionSummary();
+    await renderDisplays();
 
     const devices = await navigator.mediaDevices.enumerateDevices();
     document.getElementById("webcam").value = devices.some((d) => d.kind === "videoinput")
@@ -298,7 +314,7 @@ document.getElementById("hardwareForm").addEventListener("submit", async (event)
         p_storage_gb: parseInt(document.getElementById("storageGb").value, 10) || 0,
         p_storage_type: "Unknown (not detectable via browser)",
         p_storage_drives: storageDrives,
-        p_screen_resolution: document.getElementById("screenResolution").value,
+        p_screen_resolution: screenResolution,
         p_internet_speed_down: internetSpeed.down,
         p_internet_speed_up: internetSpeed.up,
         p_webcam_present: document.getElementById("webcam").value === "Yes",
