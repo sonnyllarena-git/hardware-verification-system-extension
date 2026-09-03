@@ -76,6 +76,57 @@ function loadParamsFromCheckPage() {
   });
 }
 
+// navigator.userAgent's OS-version component is frozen by Chrome (privacy hardening) —
+// on Mac it always reads "10_15_7" no matter the real OS version, so it can't be parsed
+// for this. userAgentData's high-entropy platformVersion isn't frozen and, on macOS,
+// reports the real marketing version (e.g. "14.6.2"); on Windows it's "10.0.<build>",
+// where build >= 22000 shipped as Windows 11.
+async function getOSLabel(platformInfo) {
+  const osMap = { win: "Windows", mac: "macOS", linux: "Linux", cros: "ChromeOS" };
+  const osName = osMap[platformInfo.os] || platformInfo.os;
+
+  if (!navigator.userAgentData?.getHighEntropyValues) {
+    return osName;
+  }
+
+  try {
+    const { platformVersion } = await navigator.userAgentData.getHighEntropyValues([
+      "platformVersion",
+    ]);
+    if (!platformVersion) return osName;
+
+    if (platformInfo.os === "win") {
+      const build = parseInt(platformVersion.split(".")[2] || "0", 10);
+      const winName = build >= 22000 ? "Windows 11" : "Windows 10";
+      return `${winName} (build ${build})`;
+    }
+
+    return `${osName} ${platformVersion}`;
+  } catch (error) {
+    return osName;
+  }
+}
+
+// window.screen only ever reflects the display the popup window itself is on, so a second
+// monitor is invisible to it. chrome.system.display is the privileged extension API that
+// actually enumerates every connected display (this extension already holds chrome.system.*
+// permissions) — falls back to window.screen if the permission/API is ever unavailable.
+async function getScreenResolutionSummary() {
+  try {
+    const displays = await chrome.system.display.getInfo();
+    if (displays && displays.length > 0) {
+      return displays
+        .slice()
+        .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+        .map((d) => `${d.bounds.width}x${d.bounds.height}${d.isPrimary ? " (primary)" : ""}`)
+        .join(", ");
+    }
+  } catch (error) {
+    // system.display unavailable — fall back to the popup's own screen object below.
+  }
+  return `${window.screen.width}x${window.screen.height}`;
+}
+
 async function detectHardware() {
   try {
     const cpuInfo = await chrome.system.cpu.getInfo();
@@ -87,9 +138,18 @@ async function detectHardware() {
     document.getElementById("ramGb").value = `${ramGb} GB`;
 
     const storageInfo = await chrome.system.storage.getInfo();
-    const fixedDrives = storageInfo.filter((drive) => drive.type === "fixed");
-    if (fixedDrives.length > 0) {
-      const totalBytes = fixedDrives.reduce((sum, drive) => sum + drive.capacity, 0);
+    const fixedDrives = storageInfo.filter((drive) => drive.type === "fixed" && drive.capacity > 0);
+
+    // On macOS, chrome.system.storage lists every synthesized APFS volume (Macintosh HD,
+    // Macintosh HD - Data, Preboot, VM, Recovery, ...) as its own "fixed" entry, and each
+    // one reports its *container's* full capacity (space is shared, not partitioned) —
+    // so summing them blindly multiplies one physical disk by however many volumes share
+    // it. Distinct physical drives essentially never report the exact same byte count, so
+    // deduping by capacity collapses the APFS noise without losing genuinely separate drives.
+    const uniqueCapacities = [...new Set(fixedDrives.map((drive) => drive.capacity))];
+
+    if (uniqueCapacities.length > 0) {
+      const totalBytes = uniqueCapacities.reduce((sum, capacity) => sum + capacity, 0);
       document.getElementById("storageGb").value =
         `${Math.round(totalBytes / (1024 * 1024 * 1024))} GB`;
 
@@ -99,8 +159,8 @@ async function detectHardware() {
       // characters (renders as tofu boxes), not a usable drive letter or name.
       const drivesEl = document.getElementById("storageDrives");
       drivesEl.innerHTML = "";
-      storageDrives = fixedDrives.map((drive) =>
-        Math.round(drive.capacity / (1024 * 1024 * 1024)),
+      storageDrives = uniqueCapacities.map((capacity) =>
+        Math.round(capacity / (1024 * 1024 * 1024)),
       );
       storageDrives.forEach((gb, index) => {
         const row = document.createElement("div");
@@ -111,11 +171,9 @@ async function detectHardware() {
     }
 
     const platformInfo = await chrome.runtime.getPlatformInfo();
-    const osMap = { win: "Windows", mac: "macOS", linux: "Linux" };
-    document.getElementById("osVersion").value = osMap[platformInfo.os] || platformInfo.os;
+    document.getElementById("osVersion").value = await getOSLabel(platformInfo);
 
-    document.getElementById("screenResolution").value =
-      `${window.screen.width}x${window.screen.height}`;
+    document.getElementById("screenResolution").value = await getScreenResolutionSummary();
 
     const devices = await navigator.mediaDevices.enumerateDevices();
     document.getElementById("webcam").value = devices.some((d) => d.kind === "videoinput")

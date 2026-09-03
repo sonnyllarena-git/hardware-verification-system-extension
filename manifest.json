@@ -3,7 +3,7 @@
   "name": "TCP Hardware Checker",
   "version": "1.0.0",
   "description": "Check if your computer meets TCP technical requirements",
-  "permissions": ["system.cpu", "system.memory", "system.storage", "tabs"],
+  "permissions": ["system.cpu", "system.memory", "system.storage", "system.display", "tabs"],
   "host_permissions": [
     "https://xomtepfevlphmajhdgnu.supabase.co/*",
     "http://localhost:5173/*",
