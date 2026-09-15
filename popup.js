@@ -108,6 +108,27 @@ async function getOSLabel(platformInfo) {
   }
 }
 
+// navigator.connection (Network Information API) is Chromium-only and, even there, desktop
+// Chrome frequently reports "unknown" for `.type` rather than a real value — Chrome has never
+// fully wired up type detection for every OS/driver combination the way Android's does. This
+// is a best-effort read, not a guarantee: report whatever the browser actually knows, and fall
+// back to the same "not detectable via browser" wording already used for storage type below
+// when the browser has nothing (API missing, or type is "unknown"/"none").
+const NETWORK_TYPE_LABELS = {
+  wifi: "Wi-Fi",
+  ethernet: "Ethernet",
+  cellular: "Cellular",
+  bluetooth: "Bluetooth",
+  wimax: "WiMAX",
+  mixed: "Mixed",
+  other: "Other",
+};
+
+function getNetworkTypeLabel() {
+  const type = navigator.connection?.type;
+  return NETWORK_TYPE_LABELS[type] ?? "Unknown (not detectable via browser)";
+}
+
 // window.screen only ever reflects the display the popup window itself is on, so a second
 // monitor is invisible to it. chrome.system.display is the privileged extension API that
 // actually enumerates every connected display (this extension already holds chrome.system.*
@@ -200,6 +221,8 @@ async function detectHardware() {
     )
       ? "Yes"
       : "No";
+
+    document.getElementById("networkType").value = getNetworkTypeLabel();
   } catch (error) {
     showStatus(`Error detecting hardware: ${error.message}`, "error");
     return;
@@ -336,6 +359,7 @@ document.getElementById("hardwareForm").addEventListener("submit", async (event)
         p_internet_speed_up: internetSpeed.up,
         p_webcam_present: document.getElementById("webcam").value === "Yes",
         p_headset_present: document.getElementById("headset").value === "Yes",
+        p_network_type: document.getElementById("networkType").value,
       }),
     });
 
