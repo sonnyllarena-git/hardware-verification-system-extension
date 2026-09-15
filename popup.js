@@ -48,9 +48,16 @@ document.getElementById("rerunBtn").addEventListener("click", () => {
   detectHardware();
 });
 
+// Matches manifest.json's content_scripts — localhost is kept for local dev testing,
+// the deployed URL is the one real applicants actually land on.
+const CHECK_PAGE_URL_PATTERNS = [
+  "http://localhost:5173/check*",
+  "https://hardware-verification-system-fronte.vercel.app/check*",
+];
+
 function loadParamsFromCheckPage() {
   return new Promise((resolve) => {
-    chrome.tabs.query({ url: "http://localhost:5173/check*" }, (tabs) => {
+    chrome.tabs.query({ url: CHECK_PAGE_URL_PATTERNS }, (tabs) => {
       if (!tabs.length) {
         resolve();
         return;

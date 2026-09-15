@@ -7,13 +7,17 @@
   "host_permissions": [
     "https://xomtepfevlphmajhdgnu.supabase.co/*",
     "http://localhost:5173/*",
+    "https://hardware-verification-system-fronte.vercel.app/*",
     "https://fast.com/*",
     "https://api.fast.com/*",
     "https://*.nflxvideo.net/*"
   ],
   "content_scripts": [
     {
-      "matches": ["http://localhost:5173/check*"],
+      "matches": [
+        "http://localhost:5173/check*",
+        "https://hardware-verification-system-fronte.vercel.app/check*"
+      ],
       "js": ["content.js"]
     }
   ],
