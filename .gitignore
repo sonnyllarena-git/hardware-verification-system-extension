@@ -1,0 +1,2 @@
+# Chrome extension signing key/package — never commit, this is the extension's private key.
+keys_crx/
