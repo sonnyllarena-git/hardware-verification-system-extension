@@ -257,17 +257,26 @@ async function measureInternetSpeed() {
   internetSpeed.up = await measureSpeed(urls, true, 4000);
 }
 
+// One stream per target URL badly underestimates fast connections: fast.com's own API caps
+// urlCount at however many edge servers are nearby (confirmed live — asking for 8 returned only
+// 5), and a single connection to one of those servers tops out well below the real link speed
+// (measured ~88 Mbps on one stream against a line fast.com itself clocked at 620 Mbps elsewhere)
+// — matches this extension's own reports landing ~4x under fast.com's reading. Fast.com's real
+// client compensates by opening many simultaneous connections per server; this multiplies each
+// url into STREAMS_PER_URL concurrent streams to do the same.
+const STREAMS_PER_URL = 4;
+
 async function measureSpeed(urls, isUpload, durationMs) {
   const start = performance.now();
   let totalBytes = 0;
 
-  await Promise.all(
-    urls.map(async (url) => {
-      while (performance.now() - start < durationMs) {
-        totalBytes += isUpload ? await uploadChunk(url) : await downloadChunk(url);
-      }
-    }),
-  );
+  const runStream = async (url) => {
+    while (performance.now() - start < durationMs) {
+      totalBytes += isUpload ? await uploadChunk(url) : await downloadChunk(url);
+    }
+  };
+
+  await Promise.all(urls.flatMap((url) => Array(STREAMS_PER_URL).fill().map(() => runStream(url))));
 
   const elapsedSeconds = (performance.now() - start) / 1000;
   return Math.round(((totalBytes * 8) / elapsedSeconds / 1_000_000) * 10) / 10;
