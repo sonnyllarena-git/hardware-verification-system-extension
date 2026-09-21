@@ -202,9 +202,11 @@ async function detectHardware() {
     document.getElementById("webcam").value = devices.some((d) => d.kind === "videoinput")
       ? "Yes"
       : "No";
-    document.getElementById("headset").value = devices.some(
-      (d) => d.kind === "audioinput" && d.label,
-    )
+    // No getUserMedia() call anywhere in this extension (no mic/camera permission is ever
+    // requested), so per the browser's privacy model every device's `label` comes back as ""
+    // regardless of real hardware — checking `d.label` here made this always false. `kind` is
+    // still reported accurately without permission, same as the webcam check just above.
+    document.getElementById("headset").value = devices.some((d) => d.kind === "audioinput")
       ? "Yes"
       : "No";
   } catch (error) {
