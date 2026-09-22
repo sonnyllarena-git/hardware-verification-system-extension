@@ -8,10 +8,11 @@
     "https://xomtepfevlphmajhdgnu.supabase.co/*",
     "http://localhost:5173/*",
     "https://hardware-verification-system-fronte.vercel.app/*",
-    "https://fast.com/*",
-    "https://api.fast.com/*",
-    "https://*.nflxvideo.net/*"
+    "https://speed.cloudflare.com/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": [

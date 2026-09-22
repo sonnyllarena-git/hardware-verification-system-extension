@@ -10,21 +10,6 @@ let internetSpeed = { down: null, up: null };
 let storageDrives = [];
 let screenResolution = "";
 
-// JS port of tcp-hardware-check-exe/Services/SpeedTestService.cs's GetTargetUrlsAsync:
-// scrape a token out of fast.com's own JS bundle, then ask its (undocumented) speedtest
-// API for CDN target URLs. Same fragility as the EXE's version — no SLA, Netflix can
-// change or remove this without notice, which would surface as a thrown error here.
-async function getFastComTargetUrls() {
-  const html = await (await fetch("https://fast.com/")).text();
-  const scriptPath = html.match(/\/app-[^"]+\.js/)[0];
-  const script = await (await fetch(`https://fast.com${scriptPath}`)).text();
-  const token = script.match(/token:"([^"]+)"/)[1];
-  const data = await (
-    await fetch(`https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=3`)
-  ).json();
-  return data.targets.map((target) => target.url);
-}
-
 document.addEventListener("DOMContentLoaded", async () => {
   await loadParamsFromCheckPage();
   await detectHardware();
@@ -222,9 +207,8 @@ async function detectHardware() {
     document.getElementById("internetUp").value = `${internetSpeed.up} Mbps`;
     showStatus("Ready — review your info below and click Submit.", "success");
   } catch (error) {
-    // fast.com's API is undocumented and can change without notice (same known
-    // fragility as SpeedTestService.cs) — a failure here shouldn't block the rest
-    // of the form, it just leaves internetSpeed.down/up as null.
+    // Network hiccups happen — a failure here shouldn't block the rest of the form,
+    // it just leaves internetSpeed.down/up as null.
     document.getElementById("internetDown").value = "Unavailable";
     document.getElementById("internetUp").value = "Unavailable";
     showStatus(`Couldn't measure internet speed (${error.message}) — you can still submit.`, "error");
@@ -236,7 +220,7 @@ async function detectHardware() {
 // Swaps the submit button's own label for a "still working" message with a spinning-circle
 // icon while it's disabled for the internet-speed test — a plain greyed-out "Submit Hardware
 // Check" looked identical to its normal idle state, easy to mistake for the extension
-// having frozen instead of still running the ~8s speed test.
+// having frozen instead of still running the ~10s speed test.
 function startSubmitButtonLoadingText(baseText) {
   document.getElementById("submitBtnSpinner").hidden = false;
   document.getElementById("submitBtnText").textContent = baseText;
@@ -247,53 +231,16 @@ function stopSubmitButtonLoadingText() {
   document.getElementById("submitBtnText").textContent = "Submit Hardware Check";
 }
 
-// ~4s each direction against fast.com's real CDN target URLs, mirroring
-// SpeedTestService.cs's MeasureAsync. Popup-specific risk beyond the EXE's own
-// "no SLA" note: this ~8s test runs inside a toolbar popup, whose JS is destroyed
-// the instant it loses focus or closes — unlike the EXE's persistent process.
+// Delegates the actual measurement to background.js (an MV3 service worker), whose lifetime is
+// independent of this popup — unlike running it here, where the popup's JS is destroyed the
+// instant it loses focus or closes, silently killing an in-progress test.
 async function measureInternetSpeed() {
-  const urls = await getFastComTargetUrls();
-  internetSpeed.down = await measureSpeed(urls, false, 4000);
-  internetSpeed.up = await measureSpeed(urls, true, 4000);
-}
-
-// One stream per target URL badly underestimates fast connections: fast.com's own API caps
-// urlCount at however many edge servers are nearby (confirmed live — asking for 8 returned only
-// 5), and a single connection to one of those servers tops out well below the real link speed
-// (measured ~88 Mbps on one stream against a line fast.com itself clocked at 620 Mbps elsewhere)
-// — matches this extension's own reports landing ~4x under fast.com's reading. Fast.com's real
-// client compensates by opening many simultaneous connections per server; this multiplies each
-// url into STREAMS_PER_URL concurrent streams to do the same.
-const STREAMS_PER_URL = 4;
-
-async function measureSpeed(urls, isUpload, durationMs) {
-  const start = performance.now();
-  let totalBytes = 0;
-
-  const runStream = async (url) => {
-    while (performance.now() - start < durationMs) {
-      totalBytes += isUpload ? await uploadChunk(url) : await downloadChunk(url);
-    }
-  };
-
-  await Promise.all(urls.flatMap((url) => Array(STREAMS_PER_URL).fill().map(() => runStream(url))));
-
-  const elapsedSeconds = (performance.now() - start) / 1000;
-  return Math.round(((totalBytes * 8) / elapsedSeconds / 1_000_000) * 10) / 10;
-}
-
-async function downloadChunk(url) {
-  const buffer = await (await fetch(url)).arrayBuffer();
-  return buffer.byteLength;
-}
-
-async function uploadChunk(url) {
-  const payload = new Uint8Array(1_000_000);
-  for (let offset = 0; offset < payload.length; offset += 65536) {
-    crypto.getRandomValues(payload.subarray(offset, Math.min(offset + 65536, payload.length)));
+  const response = await chrome.runtime.sendMessage({ action: "runSpeedTest" });
+  if (response.error) {
+    throw new Error(response.error);
   }
-  await fetch(url, { method: "POST", body: payload });
-  return payload.length;
+  internetSpeed.down = response.down;
+  internetSpeed.up = response.up;
 }
 
 function showStatus(message, type) {
