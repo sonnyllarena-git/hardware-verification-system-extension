@@ -8,7 +8,10 @@
     "https://xomtepfevlphmajhdgnu.supabase.co/*",
     "http://localhost:5173/*",
     "https://hardware-verification-system-fronte.vercel.app/*",
-    "https://speed.cloudflare.com/*"
+    "https://speed.cloudflare.com/*",
+    "https://locate.measurementlab.net/*",
+    "https://*.measurement-lab.org/*",
+    "wss://*.measurement-lab.org/*"
   ],
   "background": {
     "service_worker": "background.js"
